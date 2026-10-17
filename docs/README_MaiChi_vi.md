@@ -1,3 +1,7 @@
+# Legacy VITS baseline — tài liệu v1
+
+**Notebook clone hiện đã chuyển sang Flow v2 dưới 10M.** Hãy dùng [hướng dẫn v2](FLOW_UNDER10M.md) và [notebook mới](../notebooks/MaiChi_Flow_Under10M_Colab.ipynb). Nội dung bên dưới chỉ áp dụng cho [standalone VITS v1](../notebooks/MaiChi_Standalone_Colab.ipynb); cấu hình medium cũ vượt ngân sách 10M.
+
 # Mai Chi — notebook distillation end-to-end
 
 Mở [MaiChi_Clone_Colab.ipynb](../notebooks/MaiChi_Clone_Colab.ipynb) trong Colab/Jupyter có GPU. Bản này tự git clone repo. Bản nhúng toàn bộ source là [MaiChi_Standalone_Colab.ipynb](../notebooks/MaiChi_Standalone_Colab.ipynb). Notebook và phần giải thích trong notebook dùng tiếng Anh; mã nguồn đầy đủ nằm trong notebook và `maichi_pipeline.py`, không dùng base64.

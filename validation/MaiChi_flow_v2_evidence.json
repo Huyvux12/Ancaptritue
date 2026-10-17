@@ -1,0 +1,144 @@
+{
+  "architecture": "maichi_dit_cfm_v2",
+  "recorded_date_utc": "2026-10-17",
+  "purpose": "Implementation verification only; not evidence of trained-student speech quality.",
+  "budget_policy": {
+    "limit_exclusive": 10000000,
+    "includes": [
+      "text encoder",
+      "mel prior",
+      "duration predictor",
+      "auxiliary pitch head",
+      "DiT velocity network",
+      "waveform vocoder"
+    ],
+    "training_only_excluded": [
+      "GAN discriminator",
+      "optimizer",
+      "EMA duplicate"
+    ],
+    "external_neural_decoder": false,
+    "export_state_elements_also_guarded": true
+  },
+  "regression": {
+    "status": "passed",
+    "checks": [
+      "strict full-package parameter budget",
+      "over-budget rejection",
+      "MAS coverage",
+      "tone-bearing text",
+      "DiT gradient flow",
+      "padding invariance",
+      "CPU BF16 objective",
+      "flow integration",
+      "waveform length",
+      "exact deployment reload including vocoder"
+    ],
+    "budgets": {
+      "160": {
+        "architecture": "maichi_dit_cfm_v2",
+        "deployment_parameters": 9506276,
+        "acoustic_parameters": 7781347,
+        "vocoder_parameters": 1724929,
+        "buffer_elements": 160,
+        "limit_exclusive": 10000000,
+        "under_10m": true,
+        "note": "All student inference modules included; no external neural codec/vocoder. GAN discriminator and EMA copies are training-only."
+      },
+      "256": {
+        "architecture": "maichi_dit_cfm_v2",
+        "deployment_parameters": 9518564,
+        "acoustic_parameters": 7793635,
+        "vocoder_parameters": 1724929,
+        "buffer_elements": 160,
+        "limit_exclusive": 10000000,
+        "under_10m": true,
+        "note": "All student inference modules included; no external neural codec/vocoder. GAN discriminator and EMA copies are training-only."
+      },
+      "512": {
+        "architecture": "maichi_dit_cfm_v2",
+        "deployment_parameters": 9551332,
+        "acoustic_parameters": 7826403,
+        "vocoder_parameters": 1724929,
+        "buffer_elements": 160,
+        "limit_exclusive": 10000000,
+        "under_10m": true,
+        "note": "All student inference modules included; no external neural codec/vocoder. GAN discriminator and EMA copies are training-only."
+      }
+    }
+  },
+  "real_teacher_wav_integration": {
+    "vocoder_real_audio_training_steps": 2,
+    "acoustic_real_audio_training_steps": 3,
+    "resume_passed": true,
+    "deployment_reload_passed": true,
+    "parameters": {
+      "architecture": "maichi_dit_cfm_v2",
+      "deployment_parameters": 9490404,
+      "acoustic_parameters": 7765475,
+      "vocoder_parameters": 1724929,
+      "buffer_elements": 160,
+      "limit_exclusive": 10000000,
+      "under_10m": true,
+      "note": "All student inference modules included; no external neural codec/vocoder. GAN discriminator and EMA copies are training-only."
+    },
+    "waveform_shape": [
+      1,
+      1,
+      35584
+    ],
+    "quality_claim": false,
+    "device": "CPU"
+  },
+  "real_audio_protocol": {
+    "source": "Bundled samples/MaiChi_sample_1.wav through MaiChi_sample_3.wav, real ZeroTTS Mai Chi output from v1 validation",
+    "resample_hz": 24000,
+    "train_items": 2,
+    "validation_items": 1,
+    "batch_size": 1,
+    "train_workers": 0,
+    "vocoder_steps": 2,
+    "acoustic_steps_before_resume": 2,
+    "acoustic_steps_after_resume": 3,
+    "script": "test_maichi_flow_real_audio.py",
+    "text_only_inference_nfe": 4
+  },
+  "multiprocessing_check": {
+    "status": "blocked_by_environment",
+    "workers_attempted": 2,
+    "observed_error": "PermissionError: [Errno 1] Operation not permitted creating a local socket in multiprocessing.resource_sharer",
+    "single_process_check_passed": true,
+    "notebook_fallback": "TRAIN_WORKERS=0",
+    "multiworker_training_verified": false
+  },
+  "notebook_validation": {
+    "schema": "nbformat v4",
+    "code_cells": "Python AST checked; IPython writefile header stripped for embedded .py cells; non-Python license cells excluded",
+    "outputs_cleared": true
+  },
+  "runtime": {
+    "device": "CPU",
+    "cuda_available": false,
+    "python": "3.12.14",
+    "torch": "2.14.1+cpu",
+    "numpy": "2.3.5",
+    "numba": "0.68.0",
+    "note": "Local validation versions; notebook pins are in requirements-colab.txt. GPU runtime not exercised."
+  },
+  "not_completed": [
+    "full GPU training",
+    "RTX PRO 6000 runtime execution",
+    "full 137-item flow-student quality benchmark",
+    "student listening study",
+    "GPU throughput or memory measurement"
+  ],
+  "quality_verified": false,
+  "source_sha256": {
+    "maichi_flow.py": "f7a9571104bbc60faa400881cc54deeeb29a73ccfcb1aaf0165af73731c50489",
+    "maichi_pipeline.py": "ed3fc52b75e5707fff801d392f683a499d71b65af83d0ac0256f493db5089b44",
+    "test_maichi_flow.py": "5f3bae284599d34930b4211aad6905293b365def7cf06217047d814858916b81",
+    "test_maichi_flow_real_audio.py": "f38d01e35e09a4f99e341b874b9aafea12316fdf715a1443794363fc239dac19",
+    "notebooks/MaiChi_Flow_Under10M_Colab.ipynb": "c380a5e0a77ca6c03cf752c7e2d55922b7588dc762466b8d584520b63a00ef11",
+    "requirements-colab.txt": "02acdc64bc7c4fb121da11f030fa2d26681178cfc28298178c1faab7b65a5d00"
+  }
+}

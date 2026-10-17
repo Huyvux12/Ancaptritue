@@ -951,6 +951,9 @@ def report(root):
             weights = root / "runs" / run_dir.name / "student_deploy.pt"
             if weights.exists():
                 row["deploy_mib"] = weights.stat().st_size / 2**20
+            deployment_metadata = root / "runs" / run_dir.name / "deployment_file.json"
+            if deployment_metadata.exists():
+                row["deploy_mib"] = json.loads(deployment_metadata.read_text())["size_bytes"] / 2**20
         quality = root / "scores" / run_dir.name / "summary.json"
         if quality.exists():
             q = json.loads(quality.read_text())
