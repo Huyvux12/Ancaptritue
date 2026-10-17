@@ -393,6 +393,12 @@ def evaluate(model, validation, phase, device, n=8, pitch_weight=0.2):
     return float(np.mean(results)) if results else None
 
 
+def corpus_fingerprint(root):
+    """Stable across the T4/RTX filesystem roots; data bundle checksums cover assets."""
+    rows = [{**r, "wav": f"wavs/{r['id']}.wav"} for r in data.read_jsonl(Path(root) / "corpus.jsonl")]
+    return data.digest(json.dumps(rows, ensure_ascii=False, sort_keys=True))
+
+
 def train(root, phase="acoustic", run="flow10m", vocoder_run="vocoder", steps=100000,
           batch_size=32, workers=4, device="cuda", precision="bf16", save_every=1000,
           eval_every=1000, segment_frames=32, seed=2026, pitch_weight=0.2, allow_small=False):
@@ -414,7 +420,7 @@ def train(root, phase="acoustic", run="flow10m", vocoder_run="vocoder", steps=10
         raise ValueError("Full training requires >=1000 train and >=20 validation items; use pilot/smoke mode first")
     model = FlowStudent(len(training.vocab)).to(dev)
     budget = assert_budget(model)
-    corpus_sha = hashlib.sha256((root / "corpus.jsonl").read_bytes()).hexdigest()
+    corpus_sha = corpus_fingerprint(root)
     vocab_sha = data.digest(json.dumps(training.vocab, ensure_ascii=False))
     feature_metadata = root / "flow_mel_statistics.json"
     if feature_metadata.exists():

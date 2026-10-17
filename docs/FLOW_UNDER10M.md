@@ -1,48 +1,50 @@
-# Mai Chi Flow v2 — student dưới 10 triệu tham số
+# Mai Chi v3 — T4 tạo dữ liệu, RTX 6000 train riêng
 
-Mở [notebook Colab](https://colab.research.google.com/github/Huyvux12/Ancaptritue/blob/main/notebooks/MaiChi_Flow_Under10M_Colab.ipynb), kết nối GPU và chạy từ đầu. Notebook và mã nguồn dùng tiếng Anh. Link `MaiChi_Clone_Colab.ipynb` cũ cũng đã chuyển sang v2.
+Có đúng **hai notebook thực thi chính**, theo thứ tự:
 
-## Lựa chọn kiến trúc
+1. [01_MaiChi_Data_T4.ipynb](https://colab.research.google.com/github/Huyvux12/Ancaptritue/blob/main/notebooks/01_MaiChi_Data_T4.ipynb): chạy trên T4, tạo dữ liệu giọng Mai Chi, trích đặc trưng và lưu shard lên Google Drive.
+2. [02_MaiChi_Train_RTX6000.ipynb](https://colab.research.google.com/github/Huyvux12/Ancaptritue/blob/main/notebooks/02_MaiChi_Train_RTX6000.ipynb): chạy trên RTX PRO 6000 96GB, tải shard xuống SSD, train, export và benchmark. Không tạo lại corpus, không tải teacher để train.
 
-Student mới dùng **DiT nhỏ + optimal-transport conditional flow matching**, dự đoán mel rồi đưa qua vocoder nhỏ tự train. Đây là hướng thử nghiệm phù hợp với giới hạn chặt về số tham số và giọng Mai Chi cố định. Các phương pháp tham khảo: [F5-TTS](https://github.com/SWivid/F5-TTS), [Matcha-TTS](https://github.com/shivammehta25/Matcha-TTS), [ZipVoice](https://github.com/k2-fsa/ZipVoice). Không dùng trọng số hay tuyên bố tái lập chính xác các model này.
+Các link notebook clone/end-to-end cũ chỉ còn trang chỉ dẫn sang hai notebook này. Standalone VITS là baseline cũ, không phải luồng mới.
 
-Text encoder có 3 block, width 128; flow có 10 block DiT, width 192, 4 attention head và adaLN-zero. Text giữ dấu tiếng Việt. MAS học alignment đơn điệu trong train, có prior gần đường chéo giảm dần trong 10.000 bước đầu. Duration predictor quyết định độ dài lúc inference; DiT sinh mel bằng 4/8/16 lần tính velocity; vocoder chuyển mel thành waveform 24 kHz. F0/voicing là giám sát phụ để kiểm tra bằng ablation, không lấy F0 teacher ở inference.
+## Notebook 01 — T4
 
-Vocoder là mạng convolution kiểu HiFi-GAN; việc đổi acoustic model sang flow matching không khiến mọi thành phần khác trở thành kiến trúc mới. Toàn bộ model khởi tạo từ đầu, không có codec lớn ẩn phía sau. Dữ liệu teacher cung cấp text–audio, tức sequence-level distillation; chưa triển khai vòng sửa lỗi online Teacher in the Loop.
+Giữ `MODE="pilot"` để thử 512 câu; dùng `MODE="full"` cho 20.000 câu. Mount Drive từ ô cấu hình, giữ `DRIVE_PARENT` thống nhất với notebook 02. Mặc định thư mục gốc là `/content/drive/MyDrive/MaiChi_Distillation_v03`.
 
-**Không thể khẳng định đây là model tốt nhất hoặc đảm bảo ngang model lớn hiện đại.** Đây là lựa chọn triển khai dưới ngân sách đã cho; kết luận chất lượng cần full training, benchmark và nghe mù.
+Teacher bắt đầu batch 2. Có thể thử 4 sau khi đo tốc độ và VRAM. **Batch thật diễn ra ở text encoder, global transformer và codec; local sampler vẫn xử lý từng câu** do giới hạn graph ONNX công khai. Batch 2 trong sampler gốc là hai nhánh CFG của cùng một câu, không phải hai câu. Không thay sampling/precision để giả lập batch; chưa có số đo chứng minh tăng tốc trên T4.
 
-## Ngân sách đo thật
+Notebook tự kiểm tra CUDA và synthesize batch thật trước khi lấy corpus. Mỗi câu có RNG riêng theo ID, nhưng sai khác số học giữa phần cứng/batch vẫn có thể đổi kết quả lấy mẫu. Batch gặp OOM sẽ thử giảm kích thước; lỗi graph/dữ liệu được báo để sửa, không tự chuyển CPU.
 
-Với vocabulary 256: acoustic **7.793.635** + vocoder **1.724.929** = **9.518.564 tham số**. Với vocabulary 512: **9.551.332**. Tổng bao gồm cả pitch head dù chỉ phục vụ loss phụ. Bộ đếm dùng vocabulary thực sau khi lấy dữ liệu và chặn nếu tổng >=10.000.000.
+Luồng dữ liệu: nghe thử teacher → giữ riêng toàn bộ 137 câu benchmark → lấy transcript có revision cố định → loại overlap/trùng → synthesize Mai Chi → audit ASR → trích WORLD F0/mel → vocabulary chỉ từ train. Lọc exact/substring không loại hết paraphrase hay trùng nguồn.
 
-160 phần tử buffer mean/std được báo riêng; guard export còn kiểm tra cả tổng tensor của state dưới 10M. Discriminator GAN, optimizer và bản sao EMA chỉ dùng khi train, không được xuất. Model teacher và ASR dùng để tạo/chấm dữ liệu không nằm trong student triển khai.
+WAV/feature đang xử lý nằm trên SSD T4. Sau mỗi block 128 văn bản, các shard hoàn tất và manifest checksum được sao lưu lên Drive. Rerun cùng cấu hình sẽ khôi phục dữ liệu, không tổng hợp lại WAV đã lưu. Nếu VM mất đột ngột, tối đa block chưa sync có thể phải làm lại. Feature extraction chưa publish xong có thể phải chạy lại trên CPU; WAV đã sync được tái dùng.
 
-## Cách chạy
+Full mode tạo thêm 137 WAV teacher làm tham chiếu để RTX không cần teacher. Chờ ô cuối in **READY FOR NOTEBOOK 02**. Chỉ lúc đó bundle mới có trạng thái COMPLETE. Cần kiểm tra dung lượng SSD và quota Drive; dự trù khoảng 60GB hoặc hơn tùy dữ liệu/cache/snapshot.
 
-1. Bắt đầu `MODE="pilot"`: 512 câu, vocoder 2.000 bước, acoustic 4.000 bước. Đây là kiểm tra pipeline, chưa kỳ vọng giọng tự nhiên.
-2. Chuyển `MODE="full"`: 20.000 câu, vocoder 100.000 bước, acoustic 200.000 bước. Đây là cấu hình xuất phát, không phải cam kết hội tụ. Đọc validation curve và nghe mẫu trước khi kết luận.
-3. RTX PRO 6000 96 GB: giữ PyTorch CUDA phù hợp runtime, batch khởi đầu 32. Notebook kiểm tra tên GPU, VRAM và phép tính CUDA thật. Runtime ngoài Colab đặt `USE_DRIVE=False`, trỏ `PERSISTENT_BASE` tới ổ bền vững.
-4. Stage A train vocoder trên mel/WAV teacher với mel, STFT, feature matching và GAN loss. Stage B load EMA vocoder tốt nhất theo validation rồi đóng băng, train acoustic model. Không bỏ qua Stage A.
-5. Nếu multiprocessing không được runtime cho phép, đặt `TRAIN_WORKERS=0`; feature extraction có cấu hình riêng. Chọn BF16 khi GPU hỗ trợ, FP16 hoặc FP32 nếu cần.
-6. Sau full train, sinh và chấm đủ 137 câu với cùng text thô cho teacher/student. Grid 4/8/16 được định trước; không chọn hyperparameter theo test set. Bật `RUN_ABLATION=True` để chạy thêm cùng kiến trúc với pitch loss bằng 0.
+## Notebook 02 — RTX 6000
 
-Cần khoảng 60 GB trống cho full run, thay đổi theo độ dài audio/cache. Teacher phát 48 kHz, student 24 kHz. Không đưa ra ước tính giờ train hay mức sử dụng VRAM khi chưa đo trên GPU này.
+Chọn đúng `MODE` và `DRIVE_PARENT`. Nếu runtime ngoài Colab không mount Drive bằng `google.colab`, đặt `USE_DRIVE=False` và trỏ đến thư mục Drive đã mount/sync sẵn. Notebook tự chọn đúng commit đã dùng tạo dữ liệu, xác minh SHA-256 rồi giải nén xuống SSD RTX. Không đọc hàng triệu lượt file nhỏ trực tiếp từ Drive.
 
-## Dữ liệu, resume và export
+Mặc định batch 32, BF16 nếu GPU hỗ trợ; nếu không dùng FP16. Kiểm tra tên GPU/VRAM và phép tính CUDA thật. `TRAIN_WORKERS=0` khi runtime không cho multiprocessing. Chưa đo hiệu năng/VRAM trên GPU này.
 
-Notebook tải teacher có revision cố định, nghe thử, giữ riêng benchmark trước khi chọn text, lọc overlap exact/substring, tạo WAV Mai Chi có provenance, audit ASR, trích WORLD F0 và chia train/val/test theo hash. Mel mean/std chỉ tính từ train. Lọc overlap không bảo đảm hết paraphrase hoặc trùng nguồn.
+Train hai giai đoạn: vocoder 1,72M tham số trên mel/WAV teacher với mel/STFT/GAN/feature-matching loss, rồi đóng băng vocoder và train acoustic model DiT/OT-CFM. Pilot: 2.000 + 4.000 bước; full: 100.000 + 200.000 bước. Đây là ngân sách xuất phát, không phải cam kết hội tụ/chất lượng.
 
-`ROOT` mới tách biệt với thư mục VITS cũ. `flow_runs/vocoder/` chứa Stage A; `flow_runs/flow10m/` chứa Stage B. Mỗi run lưu `last.pt`, `best.pt`, config, log train/validation. Resume khôi phục optimizer, scaler, RNG và bước train; iterator dữ liệu khởi tạo lại nên không bảo đảm replay batch tuyệt đối. Đổi source, corpus, batch hoặc cấu hình cần run/thư mục mới. Muốn tiếp tục bản cũ, đặt `REPO_REF` bằng commit đã ghi trong `source_revision.json`.
+Đường dẫn corpus được gắn lại theo máy mới. Hash corpus được chuẩn hóa để việc chuyển thư mục không làm hỏng resume. Dữ liệu thay đổi sau khi train đã bắt đầu cần tạo run/root mới.
 
-`student_deploy.pt` chỉ chứa một state acoustic+vocoder, vocabulary và normalization. Không kèm discriminator hay bản sao EMA. Export chọn EMA từ checkpoint có validation loss tốt nhất (hoặc last nếu chưa có best), không chọn theo benchmark. Inference từ text không yêu cầu waveform/F0/duration teacher. Câu vượt trần 2.000 mel frame sẽ báo lỗi để chia câu, không cắt âm thầm.
+Checkpoint/optimizer/RNG được lưu ở SSD và sao lưu Drive mỗi 10 phút, cùng lúc kết thúc mỗi stage. Backup giữ đối tượng được tham chiếu bởi hai snapshot thành công gần nhất, có best/last/deploy. Khi VM mất, tiến độ sau checkpoint đã sao lưu có thể mất. Iterator dữ liệu khởi tạo lại nên không replay batch chính xác tuyệt đối. Đổi batch, precision, source hoặc dữ liệu phải dùng root/run mới; notebook v3 không tiếp tục trực tiếp checkpoint v2 khác source.
 
-## Đánh giá và tình trạng kiểm chứng
+Cuối cùng xuất `student_deploy.pt`, so 4/8/16 bước suy luận và chấm dual-ASR, tùy chọn UTMOS, speaker similarity Mai Chi riêng, rồi tạo worksheet nghe mù. Kết quả đánh giá được lưu lên Drive riêng. Nếu đánh giá bị ngắt, có thể chạy lại mà không train lại.
 
-Notebook giữ official dual-ASR scorer, UTMOSv2 tùy chọn, RTF trên cùng thiết bị và WavLM teacher–student Mai Chi tách riêng. Fixed-Mai-Chi không phải zero-shot cloning các giọng tham chiếu gốc; không so trường similarity đã đổi protocol với SSIM của leaderboard. RTF cần cùng phần cứng/thread; UTMOS không phải human MOS. Worksheet nghe mù tạo thứ tự A/B ngẫu nhiên và đáp án riêng.
+## Ngân sách và đánh giá đúng cách
 
-Đã chạy CPU: bộ đếm/guard; alignment và gradient DiT; giữ dấu và padding; BF16 objective; flow integration; export/reload khớp chính xác; train vocoder 2 bước trên WAV teacher thật, acoustic 2 bước rồi resume bước 3, waveform hữu hạn. Có script tái chạy trong repo. Multiprocessing bị môi trường kiểm thử chặn local socket nên chưa xác minh đường nhiều worker tại đây.
+Student vẫn là text encoder 3 block width 128 + DiT 10 block width 192/4 head, học alignment MAS và duration, mel OT-CFM, F0/voicing loss phụ, vocoder convolution kiểu HiFi-GAN. Đây là triển khai nhỏ tự train, tham khảo F5-TTS/Matcha-TTS; không phải trọng số chính thức hoặc Teacher in the Loop online.
 
-**Chưa chạy full GPU training, chưa xác nhận runtime RTX PRO 6000, chưa có benchmark chất lượng 137 câu hay nghiên cứu nghe của student đã hội tụ.** Xem [evidence v2](../validation/MaiChi_flow_v2_evidence.json). Các sample WAV trong repo là teacher, không đại diện chất lượng student mới.
+Vocabulary 256: acoustic **7.793.635** + vocoder **1.724.929** = **9.518.564 tham số**. Vocabulary thực được kiểm tra; init/export/reload chặn tổng >=10M. 160 buffer mean/std cũng nằm trong guard tensor export. Discriminator, optimizer và bản sao EMA chỉ dùng khi train. Không có codec/vocoder lớn ẩn phía sau student.
 
-Bản VITS vẫn giữ để so sánh nghiên cứu trong standalone notebook và tài liệu legacy. Medium VITS >10M không được notebook v2 sử dụng.
+Teacher phát 48kHz, student 24kHz. Teacher benchmark được đo single-request trên T4, student trên RTX: **không suy ra speedup từ hai RTF khác phần cứng**; CSV ghi rõ GPU/protocol. Chất lượng so trên cùng text; fixed Mai Chi không phải zero-shot cloning các giọng gốc. WavLM teacher–student là protocol riêng, không so trực tiếp với SSIM leaderboard. UTMOS không phải human MOS. Không tune theo 137 câu test.
+
+## Đã kiểm chứng
+
+CPU với teacher thật: batch 2, hai độ dài khác nhau; batch 1 khớp API gốc; codec batch có padding khớp giải mã riêng; corpus writer và cache resume. Kiểm tra shard/đường dẫn/checksum, từ chối partial/corrupt bundle, backup và retention. Đã train ngắn trên WAV thật, chuyển data/checkpoint sang thư mục khác rồi resume optimizer từ bước acoustic 2 lên 3, export và synthesize hữu hạn. Regression student vẫn kiểm tra budget, gradient, alignment và reload.
+
+**Chưa chạy T4/RTX thực tế, chưa full train hoặc benchmark chất lượng student đã hội tụ.** Mô phỏng Drive bằng thư mục cục bộ chỉ kiểm tra tính đúng của cơ chế truyền file, chưa xác minh hành vi FUSE/quota Drive. Xem [evidence v3](../validation/MaiChi_split_v3_evidence.json). Không thể cam kết đây là model tốt nhất hoặc ngang model lớn chỉ từ kiến trúc và smoke test.

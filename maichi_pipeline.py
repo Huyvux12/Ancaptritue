@@ -16,6 +16,7 @@ import importlib.metadata
 import json
 import math
 import os
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"  # Set before ONNX Runtime initialization.
 from pathlib import Path
 import random
 import re
@@ -129,6 +130,7 @@ def bootstrap(vits_dir):
 
 def make_teacher(root, device="cpu", threads=4):
     import onnxruntime as ort
+    ort.disable_telemetry_events()
     from huggingface_hub import snapshot_download
     from zerotts import ZeroTTS
     providers = ["CPUExecutionProvider"]

@@ -1,0 +1,201 @@
+{
+  "workflow": "T4 teacher data -> Google Drive shards -> RTX 6000 local-SSD student training",
+  "version": "split_v3",
+  "validation_device": "CPU",
+  "quality_verified": false,
+  "teacher_real_pinned_ort_1_23_2": {
+    "real_teacher_batch": 2,
+    "device": "cpu",
+    "batch_one_upstream_equivalence": true,
+    "padded_codec_matches_individual_decode": true,
+    "all_utterances_ended": true,
+    "batched_corpus_resume": true,
+    "quality_claim": false,
+    "records": [
+      {
+        "text": "Xin chào, mình là Mai Chi. Hôm nay chúng ta thử giọng nói tiếng Việt.",
+        "file": "batch_0.wav",
+        "frames": 45,
+        "seed": 100,
+        "duration": 3.6,
+        "rms": 0.14177845418453217,
+        "peak": 0.6251772046089172,
+        "clipped_fraction": 0.0
+      },
+      {
+        "text": "Ma, má, mà, mả, mã, mạ. Bé đi học và mẹ ở nhà.",
+        "file": "batch_1.wav",
+        "frames": 59,
+        "seed": 101,
+        "duration": 4.72,
+        "rms": 0.1075289249420166,
+        "peak": 0.5765403509140015,
+        "clipped_fraction": 0.0
+      }
+    ]
+  },
+  "data_backup_portability_and_training": {
+    "portable_data_checksums_and_paths": true,
+    "canonical_corpus_hash": true,
+    "partial_bundle_rejected": true,
+    "corrupt_shard_rejected": true,
+    "idempotent_publish": true,
+    "two_backup_snapshots_retained": true,
+    "checkpoint_restore": true,
+    "quality_claim": false,
+    "real_vocoder_steps": 2,
+    "real_acoustic_steps_before_transfer": 2,
+    "real_acoustic_steps_after_transfer_resume": 3,
+    "optimizer_resume_across_different_roots": true,
+    "deployment_parameters": 9490404
+  },
+  "final_handoff_guards": {
+    "portable_data_checksums_and_paths": true,
+    "canonical_corpus_hash": true,
+    "partial_bundle_rejected": true,
+    "corrupt_shard_rejected": true,
+    "idempotent_publish": true,
+    "two_backup_snapshots_retained": true,
+    "checkpoint_restore": true,
+    "quality_claim": false
+  },
+  "student_regression": {
+    "status": "passed",
+    "checks": [
+      "strict full-package parameter budget",
+      "over-budget rejection",
+      "MAS coverage",
+      "tone-bearing text",
+      "DiT gradient flow",
+      "padding invariance",
+      "CPU BF16 objective",
+      "flow integration",
+      "waveform length",
+      "exact deployment reload including vocoder"
+    ],
+    "budgets": {
+      "160": {
+        "architecture": "maichi_dit_cfm_v2",
+        "deployment_parameters": 9506276,
+        "acoustic_parameters": 7781347,
+        "vocoder_parameters": 1724929,
+        "buffer_elements": 160,
+        "limit_exclusive": 10000000,
+        "under_10m": true,
+        "note": "All student inference modules included; no external neural codec/vocoder. GAN discriminator and EMA copies are training-only."
+      },
+      "256": {
+        "architecture": "maichi_dit_cfm_v2",
+        "deployment_parameters": 9518564,
+        "acoustic_parameters": 7793635,
+        "vocoder_parameters": 1724929,
+        "buffer_elements": 160,
+        "limit_exclusive": 10000000,
+        "under_10m": true,
+        "note": "All student inference modules included; no external neural codec/vocoder. GAN discriminator and EMA copies are training-only."
+      },
+      "512": {
+        "architecture": "maichi_dit_cfm_v2",
+        "deployment_parameters": 9551332,
+        "acoustic_parameters": 7826403,
+        "vocoder_parameters": 1724929,
+        "buffer_elements": 160,
+        "limit_exclusive": 10000000,
+        "under_10m": true,
+        "note": "All student inference modules included; no external neural codec/vocoder. GAN discriminator and EMA copies are training-only."
+      }
+    }
+  },
+  "batch_contract": {
+    "batched": [
+      "text encoder",
+      "global transformer",
+      "waveform codec with per-utterance lengths"
+    ],
+    "serialized": "Public local-frame sampler called per lane; not a fully vectorized sampler",
+    "cfg_scale": 1.0,
+    "default_t4_batch": 2,
+    "rng": "Independent numpy RandomState per utterance",
+    "oom_halving": "Simulated memory-error test passed; actual GPU OOM behavior unmeasured"
+  },
+  "handoff_protocol": {
+    "drive_test": "Drive was simulated by a separate local directory; real mount/FUSE not exercised",
+    "data_sync_every_texts": 128,
+    "complete_requires_features": true,
+    "portable_corpus_hash": true,
+    "stable_dataset_identity_ignores_audit_updates": true,
+    "checkpoint_backup_seconds": 600,
+    "checkpoint_retention": "Objects referenced by latest two successful backup manifests",
+    "untracked_training_root_rejected": true
+  },
+  "runtime": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cpu",
+    "onnxruntime_primary": "1.31.0",
+    "onnxruntime_secondary_cpu_test": "1.23.2 isolated target install",
+    "cuda_available": false,
+    "telemetry": "ORT_DISABLE_TELEMETRY=1 before initialization plus disable_telemetry_events API"
+  },
+  "notebook_ort_selection": {
+    "cuda12_pytorch": "onnxruntime-gpu==1.23.2",
+    "cuda13_pytorch": "onnxruntime-gpu==1.30.0",
+    "gpu_abi_selection_tested_on_gpu": false
+  },
+  "notebook_checks": {
+    "nbformat_schema": "passed",
+    "Python_code_cell_AST": "passed",
+    "outputs_cleared": true
+  },
+  "fixtures": "Handoff/corpus-writer tests use count-only benchmark fixtures. They are not actual 137-item quality evaluation results.",
+  "not_completed": [
+    "actual T4 GPU execution/throughput/memory",
+    "actual RTX 6000 GPU training",
+    "real Drive mount/FUSE transfer",
+    "full corpus generation",
+    "full student training",
+    "trained-student 137-item quality benchmark",
+    "listening study"
+  ],
+  "source_sha256": {
+    "maichi_teacher_batch.py": "b05a6957c346d8b862a8cf2480986e98b79662329ded731277e47c522c7e7ba1",
+    "maichi_handoff.py": "2ef34cb1355c336ec8feeff424026270500a010c3639867142570483c5e3b439",
+    "maichi_train_runner.py": "22b3109a568f8b67ee432069b067098df9425450782074208a4e5a57e2bdc1e7",
+    "maichi_pipeline.py": "91fee58fc62641f7bd490fb6326a47138be249a0a50742ff7d383db42e1dba09",
+    "maichi_flow.py": "4754b6e104da0cbbff449d3c38355689db72e8f39291700737adda435fcc40ae",
+    "test_maichi_teacher_batch.py": "a958c80ee3a7b76a890274a0c111b797b1e73ccd74b7250100f0edc68422ae90",
+    "test_maichi_handoff.py": "377f86dfa4e5db4a4a730fcb170af438595a55ab43ad249694fdbbceb4a04f48",
+    "notebooks/01_MaiChi_Data_T4.ipynb": "3c4ac6d5b84581a0d1cedf2f9384905289aa841355699caa580f4de6bf21b074",
+    "notebooks/02_MaiChi_Train_RTX6000.ipynb": "29c6d3c2bb8f533d1713cb3db13281e4d2f5d9b66c26d5fa7c4e2576513156b4"
+  },
+  "teacher_real_primary_ort": {
+    "real_teacher_batch": 2,
+    "device": "cpu",
+    "batch_one_upstream_equivalence": true,
+    "padded_codec_matches_individual_decode": true,
+    "all_utterances_ended": true,
+    "batched_corpus_resume": true,
+    "quality_claim": false,
+    "records": [
+      {
+        "text": "Xin chào, mình là Mai Chi. Hôm nay chúng ta thử giọng nói tiếng Việt.",
+        "file": "batch_0.wav",
+        "frames": 45,
+        "seed": 100,
+        "duration": 3.6,
+        "rms": 0.14177845418453217,
+        "peak": 0.6251772046089172,
+        "clipped_fraction": 0.0
+      },
+      {
+        "text": "Ma, má, mà, mả, mã, mạ. Bé đi học và mẹ ở nhà.",
+        "file": "batch_1.wav",
+        "frames": 59,
+        "seed": 101,
+        "duration": 4.72,
+        "rms": 0.1075289249420166,
+        "peak": 0.5765403509140015,
+        "clipped_fraction": 0.0
+      }
+    ]
+  }
+}
