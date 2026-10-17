@@ -1,0 +1,86 @@
+{
+  "schema": "titl_vi_public_engineering_v1",
+  "date_utc": "2026-10-17",
+  "scope": "Implementation/architecture checks only. Corpus-derived audio hashes, metadata, measurements and ASR records are not included.",
+  "environment": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cpu",
+    "cuda_available": false,
+    "packages": {
+      "kokoro": "0.9.4",
+      "transformers": "4.57.1",
+      "huggingface_hub": "0.36.0",
+      "safetensors": "0.8.0",
+      "pyworld": "0.3.5",
+      "librosa": "0.11.0",
+      "zerotts": "0.1.5",
+      "numpy": "2.3.5",
+      "scipy": "1.17.0",
+      "numba": "0.68.0",
+      "tokenizers": "0.22.2",
+      "nbformat": "5.11.1",
+      "soundfile": "0.14.0"
+    }
+  },
+  "upstream": {
+    "code_commit": "8d457dd80a73619fbf2e75074c5b707cbb604fbd",
+    "model": "MithrilMan/teacher-in-the-loop",
+    "model_revision": "115a6c0469632a84fbcc6c8ed0ad7b1e06154b92"
+  },
+  "final_package_sha256": {
+    "__init__.py": "66f4a576a0a4dc63f7b0bae1c5982d6ab0c1c96f6fdf842942dcf576e3a0336b",
+    "benchmark.py": "942a481610fb4ce3e14b43080ce40405540df61765c189a105ca809a703817d0",
+    "bootstrap.py": "6f7de6204fec330300be19fd336d61d2e013adfd59b235f5afb7d6bb81c5150e",
+    "cli.py": "c43175324f0a99e39e66f6b3eb8f17c335673e09d2273b6a2eb82d2a582be434",
+    "ctc.py": "c644353542e98556ea0aa7eafe0db8a40f3dbaec113988952fbaf2562aa4dd4f",
+    "data.py": "569b5ded39a9eb8f1574471bd02d482e2f86bad7747f3a165618fd8bbef47f80",
+    "gate.py": "516d0595217c416f112cbd9bacdb9ad8e0fa37a207000d78298cac38d51f9923",
+    "model.py": "7210a76f14f43cf0ee5fb2e8a9a446e642786532b20bae3e336f3e822e3fdc62",
+    "storage.py": "c3b7ca8027e442d5598c840e41a7ce7dd580cb904f4b84ef46b543e011734123",
+    "train.py": "4393958c6d5091f15b92fe6799889c1d7f1be64ef5a3144a5619b4a0c4bdc4a6",
+    "upstream/__init__.py": "11ae331e1cad76b7c2e726af7eee68ac703861e4a106a0dff8b802efbf79d768",
+    "upstream/discriminators.py": "d2c645c123376f7181f8499e9829da001c156780771abe7b1326d6a19065355e",
+    "upstream/exportable.py": "32838c84f24ac20417a08a61fa3c27721d8c800c7cd6f7f576a9c4ceba512d46",
+    "upstream/student.py": "90456f28ac3d6dd06e76ad8f253f9bcadd9060cdecb6880268651e0ff8ba0f8b",
+    "upstream/student_decoder.py": "c1681d52fe757691beed7261962aeb1ba1f2dd6b2d189c68433d732da8a5251f"
+  },
+  "inference_parameter_budget": {
+    "text": 4261908,
+    "decoder": 3848578,
+    "total": 8110486,
+    "limit_exclusive": 10000000,
+    "includes": "All text, decoder and harmonic-source parameters; no external neural vocoder"
+  },
+  "implementation_checks": {
+    "released_weights_strict_loading": "passed",
+    "old_embedding_rows_retained": "passed",
+    "english_vocabulary_expansion_parity": "passed",
+    "native_vs_export_stft_comparison": "passed",
+    "ctc_custom_head_strict_loading": "passed",
+    "cpu_training_and_optimizer_resume": "exercised",
+    "portable_resume_and_configuration_guard": "passed",
+    "optional_gan_optimization": "exercised",
+    "cached_transcript_change_guard": "passed",
+    "quick_contract_tests": 4,
+    "corrupt_snapshot_rejected": true,
+    "snapshot_retention_contract": 2,
+    "export_gate_failure_contract": "passed",
+    "positive_export_serialization": "Passed only in an isolated explicitly fake-gate fixture; serialization/budget test, NOT quality evidence.",
+    "notebook_schema_and_cell_ast": "passed"
+  },
+  "reproduce": [
+    "python test_titl_vi.py",
+    "python test_titl_vi.py --real --root /scratch/vi8m_test"
+  ],
+  "not_verified": [
+    "T4 or RTX CUDA training/throughput/VRAM",
+    "Full-corpus Vietnamese convergence",
+    "137-item trained-student benchmark",
+    "Human listening/MOS",
+    "Six-tone preservation",
+    "Speaker fidelity",
+    "Mobile/ONNX deployment"
+  ],
+  "quality_verified": false,
+  "quality_verified_vietnamese_checkpoint_published": false
+}

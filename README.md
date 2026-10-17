@@ -1,154 +1,114 @@
-# Mai Chi distillation: T4 data → Drive → RTX 6000 training
+# Mai Chi Vietnamese TTS: pretrained TITL 8M adaptation
 
-Two separate clone-and-run notebooks. The complete student remains **strictly
-below 10,000,000 parameters, including its waveform vocoder**.
+Use the **actual pretrained Paradee / Teacher-in-the-Loop architecture** for the
+new experiment. The original text backbone and waveform decoder are retained;
+Vietnamese tone-bearing character embeddings are appended. Complete inference
+student: **8,110,486 parameters**, including waveform generation, strictly <10M.
+
+**Vietnamese quality is experimental.** The upstream English checkpoint works as
+a pretrained baseline; that does not establish Vietnamese quality. ZeroTTS WAV
+fine-tuning differs from the paper's Kokoro internal-feature recipe. Small-set
+listening and independent ASR gates must pass before full training/export.
+Read the [design and failure diagnosis](docs/TITL8M_VI_DESIGN.md) and
+[measured validation scope](validation/TITL8M_VI_evidence.json).
+
+No quality-verified Vietnamese checkpoint is published with this code. Quality
+measurements and corpus-derived records are omitted from this public report.
 
 | Order | Notebook | Runtime | Work |
 | --- | --- | --- | --- |
-| 1 | [01 — Data on T4](https://colab.research.google.com/github/Huyvux12/Ancaptritue/blob/main/notebooks/01_MaiChi_Data_T4.ipynb) | T4 | Batch teacher generation, audit/features, resumable Drive shards |
-| 2 | [02 — Train on RTX 6000](https://colab.research.google.com/github/Huyvux12/Ancaptritue/blob/main/notebooks/02_MaiChi_Train_RTX6000.ipynb) | RTX PRO 6000 96 GB | Import to SSD, vocoder/acoustic training, export/evaluation |
+| 1 | [01 — Data on T4](https://colab.research.google.com/github/Huyvux12/Ancaptritue/blob/main/notebooks/01_MaiChi_Data_T4.ipynb) | T4 | Batched Mai Chi teacher WAVs, checksummed Drive shards |
+| 2 | [02 — Actual pretrained TITL 8M](https://colab.research.google.com/github/Huyvux12/Ancaptritue/blob/main/notebooks/02_MaiChi_Train_RTX6000.ipynb) | RTX 6000 / CUDA | Import raw WAVs, Vietnamese alignment, small-set gates, adaptation, export |
 
-Run **01 first**, wait for `READY FOR NOTEBOOK 02`, then run **02** with the same
-`MODE` and `DRIVE_PARENT`. The training notebook does not regenerate the corpus
-or load ZeroTTS teacher weights. It automatically clones the data producer's
-recorded commit. Existing old notebook links now display these two links.
+Existing **COMPLETE v3 data bundles can be reused**. Notebook 02 skips the old
+Flow/VITS features and recomputes the original model's 40-Hz durations and 80-Hz
+pitch/loudness. It does not regenerate teacher audio or load teacher weights.
+`zerotts` is used only for its pinned number-normalization utility during training
+and inference. Notebook 01 still prepares legacy features for bundle compatibility.
 
-## Settings and storage
+The previous custom Flow student was reported to produce buzzing after training.
+Its [notebook](notebooks/legacy/02_MaiChi_Flow_Train_RTX6000.ipynb) and
+[old description](docs/LEGACY_FLOW_README.md) are retained as legacy experiments;
+their short engineering checks did not demonstrate speech quality.
 
-- Start with `MODE="pilot"`: 512 texts, then 2,000 vocoder and 4,000 acoustic steps.
-  This is an execution check, not a quality demonstration.
-- Full mode: 20,000 texts, 100,000 vocoder steps and 200,000 acoustic steps.
-  These are starting budgets, not guaranteed convergence.
-- T4 teacher batch starts at **2**. Try 4 after measuring memory/throughput.
-  Only memory errors trigger smaller batches; graph/data errors stop execution.
-- RTX training starts at batch **32**, BF16 if supported, otherwise FP16.
-  Use `TRAIN_WORKERS=0` if multiprocessing is unavailable.
-- Mounted Drive default: `/content/drive/MyDrive/MaiChi_Distillation_v03`.
-  External runtimes can set `USE_DRIVE=False` and point `DRIVE_PARENT` at an
-  already mounted/synced Drive folder. Mounting is not provided automatically
-  outside supported Colab runtimes.
-- Data/features are read from **local SSD**, not directly from Drive. Allow
-  approximately 60 GB or more of local and Drive space depending on audio,
-  features, cached data snapshots and checkpoints. Check actual quotas.
+## Run the two notebooks
 
-## What teacher batching means
+- Keep `MODE` and `DRIVE_PARENT` consistent. Default Drive parent:
+  `/content/drive/MyDrive/MaiChi_Distillation_v03`.
+- Start with `pilot` for execution checks. Full adaptation requires `full` data
+  from the start, with >=1,000 accepted train and >=20 validation items.
+- Finish notebook 01 until `READY FOR NOTEBOOK 02`. On RTX, notebook 02 imports
+  raw audio to SSD, loads the pinned pretrained weights, verifies English parity,
+  aligns Vietnamese, then runs 32-utterance bridge/joint trials.
+- **Stop if the gate fails.** Inspect teacher audio and three student views:
+  aligned/measured prosody, aligned/predicted prosody, and free text. Do not run
+  a full job on the assumption that more steps will fix decoder mismatch.
+- Full adaptation, optional GAN, validation gate and deployment export follow
+  only after the required gates. These are starting budgets, not measured
+  convergence guarantees. FP32 and batch 8 are conservative defaults; measure
+  actual step time/VRAM before increasing batch.
+- External GPU runtimes can set `USE_DRIVE=False` and supply an already mounted
+  or synced Drive directory. Keep data/training on local SSD.
 
-The pinned public ZeroTTS ONNX export supports independent batched text encoding,
-global-transformer steps and codec decoding. Its **local-frame sampling graph
-has batch-one outputs**; its batch-two hidden state is for CFG, not two requests.
-Our adapter calls that sampler separately per lane, preserving its sampling
-knobs and repetition history, while batching the other stages. This is partial
-model batching, not a fully vectorized sampler or a measured T4 speedup.
+Training snapshots are saved every ten minutes and after stages, with the latest
+two successful snapshots retained. TITL backups use a separate `training_titl8m`
+directory. Resume checks source, data, vocabulary and configuration fingerprints;
+optimizer and RNG are restored, but the data iterator restarts. A new experiment
+requires a new `RUN_LABEL` and local root. Training source is pinned independently
+from the old raw-data producer commit.
 
-Text lengths are bucketed within each 128-text checkpoint block. Independent
-RNG streams are seeded per text; floating-point differences across batch shapes
-or hardware may still change sampled outputs. The T4 notebook performs a real
-CUDA batch smoke check before collecting data and logs actual batch throughput.
-Teacher graphs retain their original FP32 precision. ONNX telemetry is disabled
-before initialization.
-
-## Data transfer and resume
-
-Notebook 01 writes WAVs and atomic sidecars to SSD, then publishes immutable tar
-shards and a checksummed manifest to Drive after each 128-text block. It reserves
-all 137 benchmark texts before training-text selection, records rejections and
-extracts train-only vocabulary/WORLD features. After all features are present,
-it publishes a **COMPLETE** bundle. An interrupted VM can lose the current
-unsynced block; re-extracting features may be needed if their final publication
-was interrupted. Completed Drive-saved WAVs are reused.
-
-Notebook 02 verifies checksums, imports shards to SSD and rebinds paths to its
-own filesystem. A portable corpus fingerprint allows checkpoint resume across
-different runtime root paths. Partial/corrupt data or a different bundle for an
-existing training run is rejected.
-
-Training checkpoints are copied to Drive every 10 minutes and at each stage's
-end. Backup objects retain the latest **two successful backup snapshots**,
-including referenced best/last checkpoints. Checkpoint/optimizer/RNG states
-resume; the data iterator restarts, so exact batch replay is not promised.
-New experiments require a new local root and `RUN_LABEL`. Do not republish a
-changed dataset into a running experiment. The old monolithic v2 run directories
-are separate from this v3 workflow.
-
-Teacher benchmark WAVs can also be generated on T4 and transferred. Student
-benchmark inference then runs on RTX without teacher weights. Quality evaluation
-uses identical text, but **T4 teacher RTF and RTX student RTF are different-hardware
-measurements**; the comparison CSV labels this explicitly. Benchmark generation
-is single-request, separate from batched corpus generation.
-
-## Student architecture and strict budget
-
-The student is a compact DiT trained with OT conditional flow matching in mel
-space, learned durations/MAS and auxiliary pitch supervision, followed by a
-compact HiFi-GAN-style vocoder. Train the vocoder first, then freeze it for
-acoustic training. At inference no teacher audio/F0/durations are needed.
-This is sequence-level audio distillation, not Teacher in the Loop online
-correction or an official pretrained F5-TTS/Matcha-TTS model.
-
-| Vocabulary | Acoustic modules | Waveform vocoder | Complete student |
-| --- | ---: | ---: | ---: |
-| 160 | 7,781,347 | 1,724,929 | **9,506,276** |
-| 256 | 7,793,635 | 1,724,929 | **9,518,564** |
-| 512 | 7,826,403 | 1,724,929 | **9,551,332** |
-
-Actual vocabulary is checked before training. Initialization/export/reload fail
-at >=10M. Counts include the auxiliary pitch head; 160 normalization buffer
-elements are also checked in the exported tensor budget. GAN discriminator,
-optimizer and duplicate EMA weights are training-only. There is no hidden
-external neural codec/vocoder in the student. Teacher is 48 kHz; student 24 kHz.
-
-## Validation and files
-
-CPU checks completed: real teacher batch 2 with independent lengths, batch-one
-upstream equivalence, padded codec versus individual decode, corpus-cache resume;
-portable/checksummed shards; partial/corrupt data rejection; backup retention;
-real-WAV vocoder/acoustic optimization and optimizer resume across different
-root paths; full-student parameter/export regressions.
-
-**Not verified:** actual T4/RTX GPU throughput/memory, full training, the 137-item
-trained-student quality benchmark or a listening study. A new architecture and
-short CPU smoke tests cannot establish state-of-the-art speech quality.
+## Implementation
 
 | File | Purpose |
 | --- | --- |
-| [Vietnamese guide](docs/FLOW_UNDER10M.md) | Two-runtime setup and limitations |
-| [Batch teacher adapter](maichi_teacher_batch.py) | Multi-utterance ONNX orchestration, RNG/EOA/OOM/resume |
-| [Data and checkpoint transfer](maichi_handoff.py) | Checksummed shards, portable paths, atomic backups |
-| [Training supervisor](maichi_train_runner.py) | Local training with periodic/final Drive backups |
-| [Flow student](maichi_flow.py) | Strict <10M model, training/export/inference |
-| [Shared data/evaluation pipeline](maichi_pipeline.py) | Teacher assets, text selection, features and scoring |
-| [v3 evidence](validation/MaiChi_split_v3_evidence.json) | Measurements and validation scope |
-| [Pinned dependencies](requirements-colab.txt) | Keeps runtime CUDA PyTorch |
+| [Vietnamese design](docs/TITL8M_VI_DESIGN.md) | Architecture, clocks, corpus schema, stages, gates, limitations |
+| [Model and pretrained loading](titl_vi/model.py) | Original architecture, appended Vietnamese IDs, strict <10M budget |
+| [Preparation](titl_vi/data.py), [CTC](titl_vi/ctc.py) | Text/WAV -> 40-Hz durations, 80-Hz F0/loudness |
+| [Training](titl_vi/train.py) | Frozen-decoder bridge, joint/GAN, strict checkpoint resume |
+| [Quality gates/export](titl_vi/gate.py) | Independent paired PhoWhisper checks, text-only deployed inference |
+| [Storage](titl_vi/storage.py) | Checksummed SSD/Drive snapshots |
+| [Benchmark](titl_vi/benchmark.py) | Fixed 137-item held-out text-to-WAV evaluation |
+| [CLI](titl_vi/cli.py) | Readable end-to-end stage commands |
+| [Dependencies](requirements-titl-vi.txt) | Retains the runtime's CUDA Torch |
+| [Tests](test_titl_vi.py), [evidence](validation/TITL8M_VI_evidence.json) | Real checks and explicit quality limits |
 
-Local checks after dependency installation:
+No base64 code payloads. Notebooks clone this repository and invoke readable
+Python modules. `export/student_vi_8m.pt` contains one inference model; no CTC,
+PhoWhisper, discriminator, optimizer or external neural vocoder is deployed.
+The current inference target is PyTorch, not an untested mobile/ONNX export.
 
-```bash
-python test_maichi_teacher_batch.py
-python test_maichi_teacher_batch.py --real --device cpu
-python test_maichi_handoff.py --real-training
-python test_maichi_flow.py
-```
+## Validation and quality scope
 
-Benchmark count-only fixtures in integration tests are not benchmark results.
-Fixed Mai Chi evaluation is not zero-shot cloning of the original reference
-speakers. Paired teacher/student WavLM similarity is kept separate from official
-reference-speaker SSIM. Select hyperparameters on validation, not the public test
-set. Optional UTMOS is not human MOS.
+Actual released weights were loaded strictly. Expanded-vocabulary English output
+matches the original token path exactly with the same RNG. Original versus
+exportable STFT was compared; real Vietnamese CTC/WAV preparation, finite gradient
+updates and optimizer resume were exercised on CPU. The public evidence file records implementation checks only; it does not
+contain corpus-derived ASR results or audio metadata.
 
-Legacy [standalone VITS](notebooks/MaiChi_Standalone_Colab.ipynb),
-[v1 guide](docs/README_MaiChi_vi.md) and v1/v2 evidence are retained for history;
-the legacy medium model exceeds 10M and is not used in this workflow.
+**Not established:** successful full-corpus Vietnamese adaptation, actual T4/RTX
+training speed/memory, six-tone accuracy, human MOS or similarity to new large
+models. ASR gates on selected utterances are necessary screening, not sufficient
+proof of natural speech. Full export remains marked `quality_verified=false`
+until human/held-out evaluation is performed. No quality-verified Vietnamese
+checkpoint is distributed here.
+
+The optional 137-item evaluation preserves public test separation. Mai Chi
+teacher/student WavLM similarity is an adapted fixed-voice measure, separate from
+original reference-speaker similarity. T4 teacher and RTX student RTF are
+measurements on different hardware. Optional predicted MOS is not human MOS.
 
 ## Sources and rights
 
+[Teacher in the Loop](https://github.com/MithrilMan/teacher-in-the-loop),
+[released weights](https://huggingface.co/MithrilMan/teacher-in-the-loop),
+[Paradee](https://github.com/sahilmahendrakar/paradee),
+[Vietnamese CTC](https://huggingface.co/nguyenvulebinh/wav2vec2-base-vi-vlsp2020),
+[PhoWhisper](https://huggingface.co/vinai/PhoWhisper-small),
 [ZeroTTS](https://github.com/zeroweight-ai/ZeroTTS),
 [ZeroSpeech](https://huggingface.co/datasets/zeroweight-ai/ZeroSpeech),
-[ZeroBench-TTS](https://huggingface.co/datasets/zeroweight-ai/ZeroBench-TTS),
-[F5-TTS](https://github.com/SWivid/F5-TTS),
-[Matcha-TTS](https://github.com/shivammehta25/Matcha-TTS),
-[VITS](https://github.com/jaywalnut310/vits).
+[ZeroBench-TTS](https://huggingface.co/datasets/zeroweight-ai/ZeroBench-TTS).
 
-New code is MIT. Attribution is retained in [LICENSE_ZEROTTS.txt](LICENSE_ZEROTTS.txt)
-and [LICENSE_VITS.txt](LICENSE_VITS.txt). Dataset/source/voice rights are separate:
-ZeroSpeech and ZeroBench are CC-BY-NC-4.0. This research pipeline does not establish
-commercial rights to a distilled voice model.
+New adaptation code is MIT. Upstream code/weights are Apache-2.0, with retained
+[licenses and attribution](titl_vi/ATTRIBUTION.md); the selected English calibration
+text is CC-BY-SA-4.0. ZeroSpeech/ZeroBench are CC-BY-NC-4.0; data and voice rights
+are separate from code. This pipeline does not establish commercial voice rights.
