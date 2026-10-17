@@ -1,0 +1,18 @@
+# Keep the runtime's CUDA PyTorch. Install pyworld after this file with
+# --no-build-isolation; install zerotts --no-deps; select exactly one ORT package.
+setuptools==80.9.0
+wheel
+cython==3.0.12
+numpy==2.2.6
+huggingface_hub==0.36.0
+tokenizers==0.22.2
+transformers==4.57.1
+librosa==0.11.0
+soundfile==0.13.1
+scipy==1.15.3
+numba==0.61.2
+pandas==2.2.3
+jiwer==4.0.0
+matplotlib==3.10.3
+tqdm
+sounddevice

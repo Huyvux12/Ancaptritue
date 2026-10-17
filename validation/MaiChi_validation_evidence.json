@@ -1,0 +1,232 @@
+{
+  "created_utc": "2026-10-17T09:10:14.384847+00:00",
+  "pipeline_version": "0.1",
+  "teacher_cpu_smoke": {
+    "model_revision": "c2bfbd67dc648cac455077333f7cf5c18a2e3bb4",
+    "device": "CPU",
+    "threads": 4,
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "samples": [
+      {
+        "text": "Xin chào, mình là Mai Chi. Hôm nay chúng ta thử giọng nói tiếng Việt.",
+        "seconds": 3.1780728989999716,
+        "duration": 4.32,
+        "rtf": 0.73566502291666,
+        "shape": [
+          1,
+          207360
+        ],
+        "finite": true,
+        "rms": 0.10600018501281738,
+        "peak": 0.5669370889663696,
+        "wav": "MaiChi_sample_1.wav"
+      },
+      {
+        "text": "Ma, má, mà, mả, mã, mạ. Bé đi học và mẹ ở nhà.",
+        "seconds": 2.8509653900000558,
+        "duration": 3.6,
+        "rtf": 0.791934830555571,
+        "shape": [
+          1,
+          172800
+        ],
+        "finite": true,
+        "rms": 0.14031849801540375,
+        "peak": 0.6650125980377197,
+        "wav": "MaiChi_sample_2.wav"
+      },
+      {
+        "text": "Sáng nay tôi dùng Python để kiểm tra mô hình trí tuệ nhân tạo.",
+        "seconds": 3.1464714169999297,
+        "duration": 3.6,
+        "rtf": 0.874019838055536,
+        "shape": [
+          1,
+          172800
+        ],
+        "finite": true,
+        "rms": 0.16301199793815613,
+        "peak": 0.6587131023406982,
+        "wav": "MaiChi_sample_3.wav"
+      }
+    ],
+    "quality_status": "waveform sanity only; no human listening or ASR audit"
+  },
+  "student_real_wav_training": {
+    "real_teacher_wav_training_steps": 3,
+    "resume_passed": true,
+    "deployment_reload_passed": true,
+    "waveform_shape": [
+      1,
+      1,
+      103936
+    ],
+    "parameters": {
+      "checkpoint_generator_parameters": 2712195,
+      "deployment_parameters": 1880579,
+      "training_only_posterior_parameters": 831616,
+      "note": "Deployment includes text encoder, duration, flow, waveform generator and pitch modules; excludes discriminator and enc_q."
+    },
+    "quality_claim": false
+  },
+  "regression": {
+    "passed": true,
+    "checks": [
+      "NFC tone preservation",
+      "monotonic alignment coverage",
+      "finite pitch/waveform gradients",
+      "parameter accounting",
+      "bit-exact deployment reload with fixed RNG",
+      "no-pitch ablation",
+      "CPU BF16 forward"
+    ]
+  },
+  "asr_audit": {
+    "n": 3,
+    "asr": "vinai/PhoWhisper-small",
+    "revision": "a86b604c346caf7148c37512eafe783a16420adb",
+    "mean_utterance_wer": 0.15018315018315018,
+    "mean_utterance_cer": 0.08953341740226987,
+    "note": "Small single-ASR audit; retains Vietnamese accents. Not a tone classifier or human listening test."
+  },
+  "asr_audit_samples": [
+    {
+      "id": "0",
+      "split": "train",
+      "text": "Xin chào, mình là Mai Chi. Hôm nay chúng ta thử giọng nói tiếng Việt.",
+      "hypothesis": "xin chào mình là mai chi hôm nay chúng ta thử giọng nói tiếng việt.",
+      "wer": 0.0,
+      "cer": 0.0
+    },
+    {
+      "id": "1",
+      "split": "train",
+      "text": "Ma, má, mà, mả, mã, mạ. Bé đi học và mẹ ở nhà.",
+      "hypothesis": "na má là mã mà bé đi học và mẹ ở nhà.",
+      "wer": 0.3076923076923077,
+      "cer": 0.15384615384615385
+    },
+    {
+      "id": "2",
+      "split": "val",
+      "text": "Sáng nay tôi dùng Python để kiểm tra mô hình trí tuệ nhân tạo.",
+      "hypothesis": "sáng nay tôi dùng file thành để kiểm tra mô hình trí tuệ nhân tạo.",
+      "wer": 0.14285714285714285,
+      "cer": 0.11475409836065574
+    }
+  ],
+  "benchmark_manifest_items": 137,
+  "text_sampling": {
+    "source": "zeroweight-ai/ZeroSpeech",
+    "source_revision": "40d6c083c420f5b620a2f9cd8f5cee9045fed715",
+    "benchmark_revision": "bba02b598c84b41ceb67b141bfbd97c6de149103",
+    "seed": 2026,
+    "count": 24,
+    "texts_sha256": "beb5941de1965ff2a6635e1e55b37ba8ad7ed1a7d7f4bc4bde12d54abb91ffb1",
+    "split_counts": {
+      "train": 21,
+      "val": 1,
+      "test": 2
+    },
+    "license": "ZeroSpeech / ZeroBench CC-BY-NC-4.0; source corpora and voice rights also apply",
+    "retrieval": "Hugging Face viewer JSON pages, cached asset revision verified; audio URLs are never fetched",
+    "leakage_limit": "Exact and substring screening; paraphrase/source-document overlap is not ruled out."
+  },
+  "uncompleted": [
+    "Full GPU training",
+    "RTX PRO 6000 96 GB CUDA execution",
+    "137-item official quality score",
+    "UTMOSv2",
+    "Full-trained student listening evaluation"
+  ],
+  "scope": "Real teacher synthesis and pipeline functionality verified; no claim of student quality, paper novelty or GPU throughput.",
+  "example_parameter_counts_vocab_160": {
+    "small": {
+      "checkpoint_generator_parameters": 10453379,
+      "deployment_parameters": 7209091,
+      "training_only_posterior_parameters": 3244288,
+      "note": "Deployment includes text encoder, duration, flow, waveform generator and pitch modules; excludes discriminator and enc_q."
+    },
+    "medium": {
+      "checkpoint_generator_parameters": 25135619,
+      "deployment_parameters": 17897603,
+      "training_only_posterior_parameters": 7238016,
+      "note": "Deployment includes text encoder, duration, flow, waveform generator and pitch modules; excludes discriminator and enc_q."
+    }
+  },
+  "sha256": {
+    "MaiChi_sample_1.wav": "2fe15b6d776bb885303d2848dd2fc0575b885df082c04be67c009227a4122809",
+    "README_MaiChi.md": "7d2ad984dfd29086bbf7a8bac8faa5bf2799a7889309560e5ee2ca33edcce4fd",
+    "test_maichi_pipeline.py": "62d9ce1eb13a6cab6328ebd27378d9c6801b3125943f8060b3a9a6062d250353",
+    "MaiChi_sample_3.wav": "f719981f6abf5850c065f05675829ace05b9929dbc601b942e78414379241aa7",
+    "MaiChi_Distillation_Colab.ipynb": "81ab31e8091585e99a94f13b6f8c8b09d0d03fca72234bafefbf422e2191d1ca",
+    "maichi_pipeline.py": "151a74f5f42d103d956860188da9c22ba210cc5858834c2bf59f4773fbb3bfb4",
+    "LICENSE_VITS.txt": "3d8165162cef96f686f02146ac2e4ae80db5797296a99c658befa424ee64727b",
+    "MaiChi_sample_2.wav": "4f51327b318e1dd15779d5e5638f2397dd8588c70ef4d15552da53091d153045"
+  },
+  "corpus_integration": {
+    "sampled_real_ZeroSpeech_texts": 4,
+    "accepted": 4,
+    "generation_resume_exact_manifest": true
+  },
+  "shipped_cli_teacher_smoke": {
+    "passed_waveform_sanity": true,
+    "quality_verified": false,
+    "teacher_revision": "c2bfbd67dc648cac455077333f7cf5c18a2e3bb4",
+    "samples": [
+      {
+        "text": "Xin chào, mình là Mai Chi. Hôm nay chúng ta thử giọng nói tiếng Việt.",
+        "seconds": 2.4284218289999444,
+        "rtf": 0.6745616191666512,
+        "duration": 3.6,
+        "rms": 0.14177845418453217,
+        "peak": 0.6251772046089172,
+        "clipped_fraction": 0.0
+      },
+      {
+        "text": "Ma, má, mà, mả, mã, mạ. Bé đi học và mẹ ở nhà.",
+        "seconds": 2.98739648999981,
+        "rtf": 0.6329229851694513,
+        "duration": 4.72,
+        "rms": 0.1075289249420166,
+        "peak": 0.5765403509140015,
+        "clipped_fraction": 0.0
+      },
+      {
+        "text": "Sáng nay tôi dùng Python để kiểm tra mô hình trí tuệ nhân tạo.",
+        "seconds": 2.2087217089997466,
+        "rtf": 0.6733907649389472,
+        "duration": 3.28,
+        "rms": 0.14041449129581451,
+        "peak": 0.6578355431556702,
+        "clipped_fraction": 0.0
+      }
+    ]
+  },
+  "repository_publication": {
+    "repository": "https://github.com/Huyvux12/Ancaptritue",
+    "additional_notebook": "notebooks/MaiChi_Clone_Colab.ipynb",
+    "notebook_validation": [
+      "nbformat schema",
+      "Python AST",
+      "cloned-source command routing",
+      "empty output cells"
+    ],
+    "source_unchanged_from_validated_pipeline": true,
+    "sha256": {
+      "README.md": "955367bffe8b9f7c3374ebc9f4d7bc8798e0713e1a769229d7a42587f8f6eaf0",
+      "LICENSE": "09a32b5286b8989c928fbd7ecaa330c89b4c59c089c921411deb3faf5f914776",
+      "test_maichi_pipeline.py": "62d9ce1eb13a6cab6328ebd27378d9c6801b3125943f8060b3a9a6062d250353",
+      ".gitignore": "3b660032772f3047154d1bbef13707163c19923560ea71c670482432102229dc",
+      "maichi_pipeline.py": "151a74f5f42d103d956860188da9c22ba210cc5858834c2bf59f4773fbb3bfb4",
+      "LICENSE_VITS.txt": "3d8165162cef96f686f02146ac2e4ae80db5797296a99c658befa424ee64727b",
+      "requirements-colab.txt": "02acdc64bc7c4fb121da11f030fa2d26681178cfc28298178c1faab7b65a5d00",
+      "docs/README_MaiChi_vi.md": "fe301c5716a41e620cb3f3eb97a2b1ab2bea40cfcf9a09f90c26495c18b2d5c8",
+      "samples/MaiChi_sample_1.wav": "2fe15b6d776bb885303d2848dd2fc0575b885df082c04be67c009227a4122809",
+      "samples/MaiChi_sample_3.wav": "f719981f6abf5850c065f05675829ace05b9929dbc601b942e78414379241aa7",
+      "samples/MaiChi_sample_2.wav": "4f51327b318e1dd15779d5e5638f2397dd8588c70ef4d15552da53091d153045",
+      "notebooks/MaiChi_Clone_Colab.ipynb": "1397a3c9e496d2808b7fde5051348245ad02db2d78523e99373690e83ded2f0d",
+      "notebooks/MaiChi_Standalone_Colab.ipynb": "81ab31e8091585e99a94f13b6f8c8b09d0d03fca72234bafefbf422e2191d1ca"
+    }
+  }
+}
